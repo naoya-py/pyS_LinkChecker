@@ -2,7 +2,6 @@ import asyncio
 import aiohttp
 import csv
 import time
-from datetime import datetime
 import sys
 
 from html_report import csv_to_html
@@ -17,10 +16,17 @@ from rich.progress import (
     TextColumn,
 )
 import orjson
+import pendulum
+from pathlib import Path
 
-URLS_TXT = 'urls.txt'
-REPORT_CSV = 'report.csv'
+URLS_TXT = 'samples/basic-urls/urls.txt'
 REPORT_HTML = 'report.html'
+
+# report CSV/JSON will be written to results/<run-timestamp>/
+REPORTS_ROOT = Path('results')
+
+# names for files (paths will be constructed per-run)
+REPORT_CSV = 'report.csv'
 REPORT_JSON = 'report.json'
 
 console = Console()
@@ -108,25 +114,23 @@ def read_urls(path):
     return urls
 
 
-def write_csv(path, rows):
+def write_csv(path, rows, checked_at):
     fieldnames = ['url', 'status', 'ok', 'reason', 'elapsed_ms', 'checked_at']
-    now = datetime.utcnow().isoformat() + 'Z'
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for r in rows:
             out = {k: r.get(k) for k in ['url', 'status', 'ok', 'reason', 'elapsed_ms']}
-            out['checked_at'] = now
+            out['checked_at'] = checked_at
             writer.writerow(out)
 
 
-def write_json(path, rows):
+def write_json(path, rows, checked_at):
     # produce a JSON array where each item includes checked_at
-    now = datetime.utcnow().isoformat() + 'Z'
     out_rows = []
     for r in rows:
         item = {k: r.get(k) for k in ['url', 'status', 'ok', 'reason', 'elapsed_ms']}
-        item['checked_at'] = now
+        item['checked_at'] = checked_at
         out_rows.append(item)
     # orjson returns bytes
     opts = getattr(orjson, 'OPT_INDENT_2', 0)
@@ -135,6 +139,14 @@ def write_json(path, rows):
     data_text = data_bytes.decode('utf-8')
     with open(path, 'w', encoding='utf-8', newline='') as f:
         f.write(data_text)
+    # Also write a small metadata file recording the exact ISO timestamp used
+    try:
+        meta_path = Path(path).with_name('run_info.txt')
+        with open(meta_path, 'w', encoding='utf-8') as mf:
+            mf.write(f'run_timestamp: {checked_at}\n')
+    except Exception:
+        # non-fatal
+        pass
 
 
 def print_summary(rows):
@@ -166,13 +178,27 @@ def main():
     if not urls:
         console.print('[yellow]チェックするURLがありません。urls.txt を確認してください。[/yellow]')
         return
+    # create run timestamp with offset using pendulum
+    run_time = pendulum.now('local')
+    # ISO 8601 with offset, e.g. 2025-08-28T14:30:00+09:00
+    iso_ts = run_time.to_iso8601_string()
+    # sanitize for filesystem: replace ':' with '-' in dir name but keep ISO for metadata
+    safe_ts = iso_ts.replace(':', '-')
+    run_dir = REPORTS_ROOT / safe_ts
+    run_dir.mkdir(parents=True, exist_ok=True)
+
     results = asyncio.run(check_urls(urls, console=console))
-    write_csv(REPORT_CSV, results)
-    console.print(f'[green]CSV レポートを出力しました:[/green] {REPORT_CSV}')
-    write_json(REPORT_JSON, results)
-    console.print(f'[green]JSON レポートを出力しました:[/green] {REPORT_JSON}')
+    csv_path = run_dir / REPORT_CSV
+    json_path = run_dir / REPORT_JSON
+    # use ISO timestamp with offset as checked_at
+    checked_at = iso_ts
+    write_csv(csv_path, results, checked_at)
+    console.print(f'[green]CSV レポートを出力しました:[/green] {csv_path}')
+    write_json(json_path, results, checked_at)
+    console.print(f'[green]JSON レポートを出力しました:[/green] {json_path}')
     try:
-        csv_to_html(REPORT_CSV, REPORT_HTML)
+        # HTML report stays at project root and references the CSV path
+        csv_to_html(csv_path, REPORT_HTML)
         console.print(f'[green]HTML レポートを出力しました:[/green] {REPORT_HTML}')
     except Exception as e:
         console.print(f'[red]HTML 出力中にエラー:[/red] {e}')

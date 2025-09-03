@@ -1,4 +1,0 @@
-url,status,ok,reason,elapsed_ms,checked_at
-https://www.example.com/,200,True,OK,215.0,2025-09-03T07:11:43.709860Z
-https://www.google.com/,200,True,OK,399.4,2025-09-03T07:11:43.709860Z
-https://httpbin.org/status/404,404,False,NOT FOUND,1567.4,2025-09-03T07:11:43.709860Z
