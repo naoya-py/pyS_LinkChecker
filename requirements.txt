@@ -1,0 +1,4 @@
+aiohttp>=3.8
+requests>=2.25
+rich>=13.0
+orjson>=3.8
