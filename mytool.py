@@ -1,3 +1,14 @@
+"""URL ステータスチェッカー（コマンドライン実行モジュール）。
+
+このモジュールは `urls.txt` に列挙された URL を非同期で巡回し、
+CSV/JSON/HTML レポートを生成します。
+
+入力: `urls.txt`（1行1URL、`#` 開始行はコメント）
+出力: results/<run-timestamp>/report.csv, report.json および report.html
+
+依存: aiohttp, rich, orjson, pendulum
+"""
+
 import asyncio
 import aiohttp
 import csv
@@ -33,6 +44,17 @@ console = Console()
 
 
 async def fetch(session, url, sem, timeout=15):
+    """指定 URL に HTTP GET しステータス情報を返す。
+
+    Parameters
+    - session: aiohttp.ClientSession を想定する非同期セッション
+    - url: チェック対象の URL (str)
+    - sem: 同時実行を制御する asyncio.Semaphore
+    - timeout: タイムアウト秒数（デフォルト 15）
+
+    Returns
+    dict: { 'url', 'status', 'reason', 'elapsed_ms', 'ok' }
+    """
     async with sem:
         start = time.time()
         try:
@@ -75,6 +97,17 @@ async def fetch(session, url, sem, timeout=15):
 
 
 async def check_urls(urls, concurrency=10, timeout=15, console=None):
+    """複数 URL を並列にチェックして結果リストを返す。
+
+    Parameters
+    - urls: URL のイテラブル
+    - concurrency: 並列度
+    - timeout: 各リクエストのタイムアウト
+    - console: rich Console を渡すと進捗表示に使用する
+
+    Returns
+    list[dict]: fetch() と同じ形式の辞書のリスト
+    """
     sem = asyncio.Semaphore(concurrency)
     connector = aiohttp.TCPConnector(limit=concurrency)
     results = []
@@ -100,6 +133,13 @@ async def check_urls(urls, concurrency=10, timeout=15, console=None):
 
 
 def read_urls(path):
+    """`path` から URL 行を読み取りリストで返す。
+
+    空行と `#` で始まる行は無視する。
+
+    Raises
+    - SystemExit: ファイルが見つからない場合に終了する
+    """
     urls = []
     try:
         with open(path, 'r', encoding='utf-8') as f:
@@ -115,6 +155,13 @@ def read_urls(path):
 
 
 def write_csv(path, rows, checked_at):
+    """`rows` を CSV ファイルに書き出す。
+
+    Parameters
+    - path: 出力先ファイルパス（Path または文字列）
+    - rows: fetch() の戻り値のリスト
+    - checked_at: チェック実行時刻の ISO 8601 文字列（オフセット付き）
+    """
     fieldnames = ['url', 'status', 'ok', 'reason', 'elapsed_ms', 'checked_at']
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -126,7 +173,13 @@ def write_csv(path, rows, checked_at):
 
 
 def write_json(path, rows, checked_at):
-    # produce a JSON array where each item includes checked_at
+    """`rows` を JSON 配列として UTF-8 テキストで書き出す。
+
+    Parameters
+    - path: 出力先ファイルパス（Path または文字列）
+    - rows: fetch() の戻り値のリスト
+    - checked_at: チェック実行時刻の ISO 8601 文字列（オフセット付き）
+    """
     out_rows = []
     for r in rows:
         item = {k: r.get(k) for k in ['url', 'status', 'ok', 'reason', 'elapsed_ms']}
@@ -150,6 +203,11 @@ def write_json(path, rows, checked_at):
 
 
 def print_summary(rows):
+    """結果をターミナルに整形して表示する（rich を使用）。
+
+    Parameters
+    - rows: fetch() の戻り値のリスト
+    """
     table = Table(title='リンクチェッカー結果')
     table.add_column('URL', overflow='fold')
     table.add_column('Status')
@@ -173,6 +231,12 @@ def print_summary(rows):
 
 
 def main():
+    """スクリプトのエントリポイント。
+
+    - 読み込み: `urls.txt`
+    - 実行: 非同期チェック
+    - 出力: results/<run-timestamp>/report.csv, report.json, report.html
+    """
     console.print('[bold blue]リンクチェッカーを開始します[/bold blue]')
     urls = read_urls(URLS_TXT)
     if not urls:

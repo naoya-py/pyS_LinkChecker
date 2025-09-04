@@ -82,3 +82,5 @@ python .\mytool.py
 生成された `report.csv` / `report.json` / `report.html` をブラウザやエディタで確認してください。
 
 ご希望があれば README にバッジ（CI・PyPI・License 等）を追加します。現在は最小のバッジを上部に追加しています。
+
+より詳細な API 仕様は `docs/API.md` を参照してください。

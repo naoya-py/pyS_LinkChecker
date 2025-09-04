@@ -1,0 +1,26 @@
+site_name: pyS_LinkChecker (MkDocs)
+site_description: Markdown site generated with MkDocs + mkdocstrings
+repo_url: ../
+
+nav:
+  - Home: index.md
+  - Reference:
+      - API: reference.md
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - "import sys, os; sys.path.insert(0, os.path.abspath('..'))"
+
+# Optional: markdown extensions
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true

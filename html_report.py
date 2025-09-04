@@ -1,3 +1,9 @@
+"""CSV から簡易 HTML レポートを生成するヘルパーモジュール。
+
+関数:
+- csv_to_html(csv_path, out_path): CSV を読み込み HTML を書き出す。
+"""
+
 import csv
 
 HTML_TEMPLATE = '''<!doctype html>
@@ -37,24 +43,42 @@ HTML_TEMPLATE = '''<!doctype html>
 </html>
 '''
 
-ROW_TEMPLATE = '<tr class="{cls}"><td><a href="{url}" target="_blank">{url}</a></td><td>{status}</td><td>{ok}</td><td>{reason}</td><td>{elapsed}</td><td>{checked_at}</td></tr>'
+ROW_TEMPLATE = (
+  '<tr class="{cls}">'
+  '<td><a href="{url}" target="_blank">{url}</a></td>'
+  '<td>{status}</td>'
+  '<td>{ok}</td>'
+  '<td>{reason}</td>'
+  '<td>{elapsed}</td>'
+  '<td>{checked_at}</td>'
+  '</tr>'
+)
+
 
 def csv_to_html(csv_path, out_path):
-    rows_html = []
-    with open(csv_path, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for r in reader:
-            ok = r.get('ok', '')
-            cls = 'ok' if ok.lower() in ('true', '1') else 'ng'
-            rows_html.append(ROW_TEMPLATE.format(
-                cls=cls,
-                url=r.get('url',''),
-                status=r.get('status',''),
-                ok=r.get('ok',''),
-                reason=r.get('reason',''),
-                elapsed=r.get('elapsed_ms',''),
-                checked_at=r.get('checked_at','')
-            ))
-    html = HTML_TEMPLATE.format(generated='', rows='\n'.join(rows_html))
-    with open(out_path, 'w', encoding='utf-8') as f:
-        f.write(html)
+  """CSV ファイルを読み込み、簡易 HTML レポートを書き出す。
+
+  Parameters
+  - csv_path: 入力 CSV ファイルパス（UTF-8 で読み込む）
+  - out_path: 出力 HTML ファイルパス（UTF-8 で書き出す）
+  """
+  rows_html = []
+  with open(csv_path, 'r', encoding='utf-8') as f:
+    reader = csv.DictReader(f)
+    for r in reader:
+      ok = r.get('ok', '')
+      cls = 'ok' if ok.lower() in ('true', '1') else 'ng'
+      rows_html.append(
+        ROW_TEMPLATE.format(
+          cls=cls,
+          url=r.get('url', ''),
+          status=r.get('status', ''),
+          ok=r.get('ok', ''),
+          reason=r.get('reason', ''),
+          elapsed=r.get('elapsed_ms', ''),
+          checked_at=r.get('checked_at', ''),
+        )
+      )
+  html = HTML_TEMPLATE.format(generated='', rows='\n'.join(rows_html))
+  with open(out_path, 'w', encoding='utf-8') as f:
+    f.write(html)
