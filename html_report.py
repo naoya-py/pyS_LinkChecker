@@ -13,12 +13,12 @@ HTML_TEMPLATE = '''<!doctype html>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>リンクチェッカー レポート</title>
   <style>
-    body{font-family:Segoe UI,Arial,Helvetica,sans-serif;padding:20px}
-    table{border-collapse:collapse;width:100%}
-    th,td{border:1px solid #ddd;padding:8px;text-align:left}
-    th{background:#f5f5f5}
-    tr.ok td{background:#eef9ee}
-    tr.ng td{background:#fdecea}
+  body{{font-family:Segoe UI,Arial,Helvetica,sans-serif;padding:20px}}
+  table{{border-collapse:collapse;width:100%}}
+  th,td{{border:1px solid #ddd;padding:8px;text-align:left}}
+  th{{background:#f5f5f5}}
+  tr.ok td{{background:#eef9ee}}
+  tr.ng td{{background:#fdecea}}
   </style>
 </head>
 <body>
